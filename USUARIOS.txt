@@ -1,0 +1,8 @@
+USER: admin_pedro PASSWORD: 'Admin_PH26*'
+
+USER: vigilante_luis PASSWORD: 'Vigilante_PH26*'
+
+USER: secretaria_ana PASSWORD: 'Secretaria_PH26*'
+
+USER: prop_apto101 PASSWORD: 'Prop101_PH26*'
+
