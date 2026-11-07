@@ -91,3 +91,117 @@ AFTER INSERT ON pago
 FOR EACH ROW
 EXECUTE PROCEDURE fn_auditar_pago();
 GRANT EXECUTE ON PROCEDURE sp_procesar_pago_admin(INT, INT, DECIMAL, VARCHAR) TO rol_propietario;
+
+--ESTRATEGIA DE OPTIMIZACION
+DROP TABLE IF EXISTS pago_prueba;
+
+CREATE TABLE pago_prueba (LIKE pago INCLUDING DEFAULTS);
+ALTER TABLE pago_prueba ADD PRIMARY KEY (id_pago);
+
+INSERT INTO pago_prueba (id_pago, id_apartamento, id_cuota, fecha_pago, monto_pagado, metodo_pago)
+SELECT  g,
+        1 + (random() * 1999)::int,                          -- 2000 apartamentos
+        1 + (random() * 199)::int,                           -- 200 cuotas
+        DATE '2017-01-01' + (random() * 3600)::int,          -- ~10 años de pagos
+        ROUND((150000 + random() * 50000)::numeric, 2),
+        (ARRAY['Efectivo','Transferencia','PSE','Tarjeta débito','Tarjeta crédito'])[1 + (random() * 4)::int]
+FROM generate_series(1, 400000) AS g;
+
+ANALYZE pago_prueba;   -- actualiza las estadísticas que usa el optimizador
+
+SELECT COUNT(*) AS filas_prueba, MIN(fecha_pago) AS desde, MAX(fecha_pago) AS hasta FROM pago_prueba;
+
+
+-- ---------------------------------------------------------------------
+-- PASO 1: ANTES del índice (línea base)
+-- Consulta típica: recaudo de un solo mes. Se espera "Seq Scan".
+-- ---------------------------------------------------------------------
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT COUNT(*) AS pagos, SUM(monto_pagado) AS recaudo
+FROM pago_prueba
+WHERE fecha_pago BETWEEN DATE '2026-10-01' AND DATE '2026-10-31';
+
+
+-- ---------------------------------------------------------------------
+-- PASO 2: ¿Y si usamos un índice HASH? (demostración de por qué NO)
+-- Se espera que el optimizador lo ignore y siga con "Seq Scan",
+-- porque hash no sabe resolver rangos.
+-- ---------------------------------------------------------------------
+CREATE INDEX idx_prueba_hash_fecha ON pago_prueba USING hash (fecha_pago);
+ANALYZE pago_prueba;
+
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT COUNT(*) AS pagos, SUM(monto_pagado) AS recaudo
+FROM pago_prueba
+WHERE fecha_pago BETWEEN DATE '2026-10-01' AND DATE '2026-10-31';
+
+DROP INDEX idx_prueba_hash_fecha;
+
+
+-- ---------------------------------------------------------------------
+-- PASO 3: DESPUÉS del índice B-tree
+-- Se espera "Index Scan" o "Bitmap Index Scan": solo se leen las páginas
+-- del mes consultado y no las de los 10 años.
+-- ---------------------------------------------------------------------
+CREATE INDEX idx_prueba_btree_fecha ON pago_prueba USING btree (fecha_pago);
+ANALYZE pago_prueba;
+
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT COUNT(*) AS pagos, SUM(monto_pagado) AS recaudo
+FROM pago_prueba
+WHERE fecha_pago BETWEEN DATE '2026-10-01' AND DATE '2026-10-31';
+
+
+-- ---------------------------------------------------------------------
+-- PASO 4: índice complementario sobre la llave foránea id_cuota
+-- Consulta típica: todos los pagos de una cuota (base de las consultas 2 y 3).
+-- ---------------------------------------------------------------------
+-- 4.a ANTES
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT COUNT(*) AS pagos, SUM(monto_pagado) AS recaudo
+FROM pago_prueba
+WHERE id_cuota = 150;
+
+-- 4.b DESPUÉS
+CREATE INDEX idx_prueba_btree_cuota ON pago_prueba USING btree (id_cuota);
+ANALYZE pago_prueba;
+
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT COUNT(*) AS pagos, SUM(monto_pagado) AS recaudo
+FROM pago_prueba
+WHERE id_cuota = 150;
+
+
+-- ---------------------------------------------------------------------
+-- PASO 5: costo del índice (tamaño en disco)
+-- Todo índice ocupa espacio y hace más lentos los INSERT/UPDATE. Aquí es
+-- aceptable: pago recibe pocas escrituras (una por apartamento al mes) y
+-- muchísimas lecturas de reportes.
+-- ---------------------------------------------------------------------
+SELECT  indexrelname                                 AS indice,
+        pg_size_pretty(pg_relation_size(indexrelid)) AS tamano
+FROM pg_stat_user_indexes
+WHERE relname = 'pago_prueba'
+ORDER BY indexrelname;
+
+SELECT pg_size_pretty(pg_relation_size('pago_prueba')) AS tamano_tabla;
+
+
+-- ---------------------------------------------------------------------
+-- PASO 6: limpiar la tabla de prueba
+-- ---------------------------------------------------------------------
+DROP TABLE pago_prueba;
+
+
+-- ---------------------------------------------------------------------
+-- PASO 7: INDICES DEFINITIVOS sobre la tabla real "pago"
+-- (esto es lo que queda en la base de datos del proyecto)
+-- ---------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_pago_fecha_pago ON pago USING btree (fecha_pago);
+CREATE INDEX IF NOT EXISTS idx_pago_id_cuota   ON pago USING btree (id_cuota);
+
+-- Verificación: lista los índices de la tabla pago
+SELECT indexname, indexdef
+FROM pg_indexes
+WHERE tablename = 'pago'
+ORDER BY indexname;
