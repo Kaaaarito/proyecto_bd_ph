@@ -399,7 +399,7 @@ INSERT INTO pago (id_pago, id_apartamento, id_cuota, fecha_pago, monto_pagado, m
   (9, 34, 5, '2025-05-01', 185000.0, 'PSE'),
   (10, 27, 5, '2025-05-08', 185000.0, 'Tarjeta débito'),
   (11, 27, 6, '2025-06-13', 185000.0, 'PSE'),
-  (12, 4, 7, '2025-07-23', 92500.0, 'Tarjeta débito'),
+  (12, 4, 7, '2025-07-23', 185000.0, 'Tarjeta débito'),
   (13, 1, 7, '2025-07-24', 185000.0, 'Transferencia'),
   (14, 29, 8, '2025-08-01', 185000.0, 'Transferencia'),
   (15, 38, 8, '2025-08-03', 185000.0, 'Tarjeta crédito'),
@@ -407,17 +407,17 @@ INSERT INTO pago (id_pago, id_apartamento, id_cuota, fecha_pago, monto_pagado, m
   (17, 19, 9, '2025-09-11', 185000.0, 'Tarjeta débito'),
   (18, 12, 10, '2025-10-02', 185000.0, 'Tarjeta débito'),
   (19, 16, 10, '2025-10-03', 185000.0, 'Efectivo'),
-  (20, 11, 11, '2025-11-04', 92500.0, 'Tarjeta crédito'),
+  (20, 11, 11, '2025-11-04', 185000.0, 'Tarjeta crédito'),
   (21, 20, 11, '2025-11-09', 185000.0, 'Tarjeta crédito'),
   (22, 34, 12, '2025-12-09', 185000.0, 'Tarjeta débito'),
-  (23, 13, 13, '2026-01-05', 97500.0, 'PSE'),
+  (23, 13, 13, '2026-01-05', 195000.0, 'PSE'),
   (24, 4, 15, '2026-03-03', 195000.0, 'Efectivo'),
   (25, 20, 15, '2026-03-09', 195000.0, 'PSE'),
   (26, 3, 15, '2026-03-09', 195000.0, 'Efectivo'),
   (27, 6, 15, '2026-03-21', 195000.0, 'Efectivo'),
   (28, 7, 16, '2026-04-09', 195000.0, 'Tarjeta crédito'),
   (29, 17, 16, '2026-04-25', 195000.0, 'PSE'),
-  (30, 35, 17, '2026-05-07', 97500.0, 'Tarjeta débito'),
+  (30, 35, 17, '2026-05-07', 195000.0, 'Tarjeta débito'),
   (31, 34, 17, '2026-05-23', 195000.0, 'Efectivo'),
   (32, 34, 18, '2026-06-01', 195000.0, 'Transferencia'),
   (33, 3, 18, '2026-06-03', 195000.0, 'Transferencia'),
@@ -428,6 +428,19 @@ INSERT INTO pago (id_pago, id_apartamento, id_cuota, fecha_pago, monto_pagado, m
   (38, 13, 22, '2026-10-03', 195000.0, 'Transferencia'),
   (39, 5, 22, '2026-10-04', 195000.0, 'Tarjeta débito'),
   (40, 9, 22, '2026-10-08', 195000.0, 'Transferencia');
+
+-- Pagos completos de los apartamentos 2 y 10 (todas las cuotas hasta 2026-11):
+-- sirven para que la vista vw_estado_financiero muestre apartamentos "Al día".
+INSERT INTO pago (id_pago, id_apartamento, id_cuota, fecha_pago, monto_pagado, metodo_pago)
+SELECT 40 + ROW_NUMBER() OVER (ORDER BY a.id_apartamento, c.id_cuota),
+       a.id_apartamento,
+       c.id_cuota,
+       c.fecha_vencimiento - 5,
+       c.valor,
+       (ARRAY['PSE','Transferencia','Efectivo','Tarjeta débito','Tarjeta crédito'])[1 + (c.id_cuota % 5)]
+FROM (VALUES (2), (10)) AS a(id_apartamento)
+CROSS JOIN cuota_admin c
+WHERE c.id_cuota <= 23;
 
 -- ingreso_visita
 INSERT INTO ingreso_visita (id_ingreso, id_visitante, id_apartamento, id_trabajador, hora_entrada, hora_salida) VALUES
@@ -479,13 +492,13 @@ INSERT INTO auditoria_pago (fecha_hora, usuario_bd, origen, operacion, resultado
   ('2025-03-04 10:03:19', 'admin_pagos', 'APP_WEB', 'INSERT', 'EXITOSO', NULL, 27, 3, 5, 185000.0, 185000.0, 0.0, 'Pago registrado correctamente'),
   ('2025-03-07 15:50:02', 'admin_pagos', 'MANUAL', 'INSERT', 'EXITOSO', NULL, 36, 3, 6, 185000.0, 185000.0, 0.0, 'Pago registrado correctamente'),
   ('2025-06-13 16:47:34', 'app_conjunto', 'MANUAL', 'INSERT', 'EXITOSO', NULL, 27, 6, 11, 185000.0, 185000.0, 0.0, 'Pago registrado correctamente'),
-  ('2025-07-23 17:31:16', 'app_conjunto', 'APP_WEB', 'INSERT', 'EXITOSO', NULL, 4, 7, 12, 92500.0, 92500.0, 92500.0, 'Pago parcial registrado; queda saldo pendiente'),
+  ('2025-07-23 17:31:16', 'app_conjunto', 'APP_WEB', 'INSERT', 'EXITOSO', NULL, 4, 7, 12, 185000.0, 185000.0, 0.0, 'Pago registrado correctamente'),
   ('2025-07-24 15:35:49', 'admin_pagos', 'MANUAL', 'INSERT', 'EXITOSO', NULL, 1, 7, 13, 185000.0, 185000.0, 0.0, 'Pago registrado correctamente'),
   ('2025-08-03 12:15:10', 'admin_pagos', 'MANUAL', 'INSERT', 'EXITOSO', NULL, 38, 8, 15, 185000.0, 185000.0, 0.0, 'Pago registrado correctamente'),
   ('2025-08-06 11:16:31', 'app_conjunto', 'MANUAL', 'INSERT', 'EXITOSO', NULL, 33, 8, 16, 185000.0, 185000.0, 0.0, 'Pago registrado correctamente'),
   ('2025-10-02 17:45:03', 'admin_pagos', 'APP_WEB', 'INSERT', 'EXITOSO', NULL, 12, 10, 18, 185000.0, 185000.0, 0.0, 'Pago registrado correctamente'),
   ('2025-10-03 10:07:38', 'admin_pagos', 'APP_WEB', 'INSERT', 'EXITOSO', NULL, 16, 10, 19, 185000.0, 185000.0, 0.0, 'Pago registrado correctamente'),
-  ('2025-11-04 15:05:41', 'app_conjunto', 'APP_MOVIL', 'INSERT', 'EXITOSO', NULL, 11, 11, 20, 92500.0, 92500.0, 92500.0, 'Pago parcial registrado; queda saldo pendiente'),
+  ('2025-11-04 15:05:41', 'app_conjunto', 'APP_MOVIL', 'INSERT', 'EXITOSO', NULL, 11, 11, 20, 185000.0, 185000.0, 0.0, 'Pago registrado correctamente'),
   ('2026-03-09 12:54:51', 'app_conjunto', 'APP_WEB', 'INSERT', 'EXITOSO', NULL, 3, 15, 26, 195000.0, 195000.0, 0.0, 'Pago registrado correctamente'),
   ('2026-04-25 09:58:11', 'app_conjunto', 'MANUAL', 'INSERT', 'EXITOSO', NULL, 17, 16, 29, 195000.0, 195000.0, 0.0, 'Pago registrado correctamente'),
   ('2026-06-01 13:52:39', 'admin_pagos', 'MANUAL', 'INSERT', 'EXITOSO', NULL, 34, 18, 32, 195000.0, 195000.0, 0.0, 'Pago registrado correctamente'),

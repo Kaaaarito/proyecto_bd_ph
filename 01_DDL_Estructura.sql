@@ -1,8 +1,3 @@
--- =====================================================================
--- Sistema de gestión de propiedad horizontal - Estructura (DDL)
--- Motor: PostgreSQL
--- =====================================================================
-
 -- Limpieza (orden inverso a las dependencias)
 DROP TABLE IF EXISTS auditoria_pago CASCADE;
 DROP TABLE IF EXISTS ingreso_visita CASCADE;
@@ -19,9 +14,7 @@ DROP TABLE IF EXISTS residente CASCADE;
 DROP TABLE IF EXISTS apartamento CASCADE;
 DROP TABLE IF EXISTS torre CASCADE;
 
--- ---------------------------------------------------------------------
 -- torre
--- ---------------------------------------------------------------------
 CREATE TABLE torre (
     id_torre      INT         NOT NULL,
     nombre_torre  VARCHAR(30) NOT NULL,
@@ -31,9 +24,7 @@ CREATE TABLE torre (
     CONSTRAINT ck_torre_pisos CHECK (numero_pisos > 0)
 );
 
--- ---------------------------------------------------------------------
 -- apartamento
--- ---------------------------------------------------------------------
 CREATE TABLE apartamento (
     id_apartamento   INT           NOT NULL,
     id_torre         INT           NOT NULL,
@@ -49,9 +40,7 @@ CREATE TABLE apartamento (
     CONSTRAINT ck_apartamento_habitaciones CHECK (num_habitaciones >= 1)
 );
 
--- ---------------------------------------------------------------------
 -- residente
--- ---------------------------------------------------------------------
 CREATE TABLE residente (
     id_residente     INT          NOT NULL,
     id_apartamento   INT          NOT NULL,
@@ -72,9 +61,7 @@ CREATE TABLE residente (
     CONSTRAINT ck_residente_nacimiento CHECK (fecha_nacimiento <= CURRENT_DATE)
 );
 
--- ---------------------------------------------------------------------
 -- trabajador
--- ---------------------------------------------------------------------
 CREATE TABLE trabajador (
     id_trabajador    INT          NOT NULL,
     tipo_documento   VARCHAR(5)   NOT NULL,
@@ -89,9 +76,7 @@ CREATE TABLE trabajador (
     CONSTRAINT ck_trabajador_tipo_doc CHECK (tipo_documento IN ('CC', 'CE', 'PA'))
 );
 
--- ---------------------------------------------------------------------
 -- visitante
--- ---------------------------------------------------------------------
 CREATE TABLE visitante (
     id_visitante     INT          NOT NULL,
     tipo_documento   VARCHAR(5)   NOT NULL,
@@ -102,9 +87,7 @@ CREATE TABLE visitante (
     CONSTRAINT ck_visitante_tipo_doc CHECK (tipo_documento IN ('CC', 'CE', 'TI', 'PA'))
 );
 
--- ---------------------------------------------------------------------
 -- zona_comun
--- ---------------------------------------------------------------------
 CREATE TABLE zona_comun (
     id_zona        INT            NOT NULL,
     nombre_zona    VARCHAR(60)    NOT NULL,
@@ -119,9 +102,7 @@ CREATE TABLE zona_comun (
     CONSTRAINT ck_zona_horario CHECK (hora_cierre > hora_apertura)
 );
 
--- ---------------------------------------------------------------------
 -- reserva
--- ---------------------------------------------------------------------
 CREATE TABLE reserva (
     id_reserva     INT          NOT NULL,
     id_residente   INT          NOT NULL,
@@ -137,9 +118,7 @@ CREATE TABLE reserva (
     CONSTRAINT ck_reserva_estado CHECK (estado IN ('Pendiente', 'Confirmada', 'Cancelada', 'Finalizada'))
 );
 
--- ---------------------------------------------------------------------
 -- parqueadero
--- ---------------------------------------------------------------------
 CREATE TABLE parqueadero (
     id_parqueadero      INT          NOT NULL,
     id_apartamento      INT          NOT NULL,
@@ -151,9 +130,7 @@ CREATE TABLE parqueadero (
     CONSTRAINT ck_parqueadero_tipo CHECK (tipo_parqueadero IN ('Carro', 'Moto'))
 );
 
--- ---------------------------------------------------------------------
 -- vehiculo
--- ---------------------------------------------------------------------
 CREATE TABLE vehiculo (
     id_vehiculo     INT          NOT NULL,
     id_parqueadero  INT          NOT NULL,
@@ -167,11 +144,8 @@ CREATE TABLE vehiculo (
     CONSTRAINT ck_vehiculo_tipo CHECK (tipo_vehiculo IN ('Carro', 'Moto'))
 );
 
--- ---------------------------------------------------------------------
 -- telefono
--- NOTA: se agrega la columna "numero", que no aparecía en el diagrama.
 -- Cada teléfono pertenece a un residente O a un trabajador (nunca a ambos).
--- ---------------------------------------------------------------------
 CREATE TABLE telefono (
     id_telefono    INT          NOT NULL,
     id_residente   INT,
@@ -187,9 +161,7 @@ CREATE TABLE telefono (
     )
 );
 
--- ---------------------------------------------------------------------
 -- cuota_admin
--- ---------------------------------------------------------------------
 CREATE TABLE cuota_admin (
     id_cuota           INT            NOT NULL,
     periodo            CHAR(7)        NOT NULL,
@@ -201,9 +173,7 @@ CREATE TABLE cuota_admin (
     CONSTRAINT ck_cuota_valor CHECK (valor > 0)
 );
 
--- ---------------------------------------------------------------------
 -- pago
--- ---------------------------------------------------------------------
 CREATE TABLE pago (
     id_pago         INT            NOT NULL,
     id_apartamento  INT            NOT NULL,
@@ -219,9 +189,7 @@ CREATE TABLE pago (
     CONSTRAINT ck_pago_metodo CHECK (metodo_pago IN ('Efectivo', 'Transferencia', 'PSE', 'Tarjeta débito', 'Tarjeta crédito'))
 );
 
--- ---------------------------------------------------------------------
 -- ingreso_visita
--- ---------------------------------------------------------------------
 CREATE TABLE ingreso_visita (
     id_ingreso      INT        NOT NULL,
     id_visitante    INT        NOT NULL,
@@ -236,11 +204,8 @@ CREATE TABLE ingreso_visita (
     CONSTRAINT ck_ingreso_horas CHECK (hora_salida IS NULL OR hora_salida > hora_entrada)
 );
 
--- ---------------------------------------------------------------------
 -- auditoria_pago
--- id_pago NO es llave foránea (según el diagrama): permite auditar
 -- intentos fallidos donde el pago nunca llegó a crearse.
--- ---------------------------------------------------------------------
 CREATE TABLE auditoria_pago (
     id_auditoria      SERIAL,
     fecha_hora        TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
