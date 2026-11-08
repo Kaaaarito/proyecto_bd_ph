@@ -96,7 +96,6 @@ CREATE TRIGGER trg_despues_insert_pago
 AFTER INSERT ON pago
 FOR EACH ROW
 EXECUTE PROCEDURE fn_auditar_pago();
-<<<<<<< HEAD
 
 
 --PRUEBA VIGILANTE
@@ -132,8 +131,6 @@ WHERE id_zona = 1;
 
 DELETE FROM reserva WHERE id_reserva = 2;
 
-=======
-GRANT EXECUTE ON PROCEDURE sp_procesar_pago_admin(INT, INT, DECIMAL, VARCHAR) TO rol_propietario;
 
 --ESTRATEGIA DE OPTIMIZACION
 DROP TABLE IF EXISTS pago_prueba;
@@ -248,4 +245,3 @@ SELECT indexname, indexdef
 FROM pg_indexes
 WHERE tablename = 'pago'
 ORDER BY indexname;
->>>>>>> aa00db1876b1b33ae13e71449d9a5aa1e614b868
